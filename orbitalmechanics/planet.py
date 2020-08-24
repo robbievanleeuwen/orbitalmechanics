@@ -1,4 +1,5 @@
 import numpy as np
+from utils import kepler_E, state_vector, zero_to_360
 
 
 class Planet:
@@ -22,6 +23,13 @@ class Planet:
         """
 
         self.planet_id = planet_id
+        self.mu = 1.327124e11  # mu for planets orbiting the sun
+        self.au = 149597871  # astronomical unit
+
+        names = [
+            'Mercury', 'Venus', 'Earth', 'Mars', 'Jupiter', 'Saturn', 'Uranus', 'Neptune', 'Pluto'
+        ]
+        self.planet_name = names[planet_id]
 
     def planetry_elements(self):
         """Extract a planet's J2000 orbital elements and centennial rates.
@@ -60,9 +68,8 @@ class Planet:
         rates = cent_rates[self.planet_id, :]
 
         # convert AU to km
-        au = 149597871
-        J2000_oe[0] *= au
-        rates[0] *= au
+        J2000_oe[0] *= self.au
+        rates[0] *= self.au
 
         # convert arcseconds to fractions of a degree
         rates[2:] *= 1 / 3600
@@ -84,12 +91,8 @@ class Planet:
         * a: Semi-major axis
 
         :param int planet_id: ID of the planet
-        :param int y: Year between 1900 & 2100, i.e. 1901 <= y <= 2099.
-        :param int m: Month i.e. 1 <= m <= 12
-        :param int d: Day i.e. 1 <= m <= 31
-        :param int hour: UT hour i.e. 0 <= hour <= 23
-        :param int minute: UT minute i.e. 0 <= minute <= 59
-        :param int second: UT second i.e. 0 <= second <= 59
+        :param universal_time: Universal time object
+        :type universal_time: :class:`~orbitalmechanics.UniversalTime`
         :param bool deg: Whether or not to output in degrees or radians
 
         :returns: Orbital elements (h, i, Omega, e, omega, theta, a, omega_hat, L, M, E), the state
@@ -97,19 +100,16 @@ class Planet:
         :rtype: tuple(tuple(float), :class:`numpy.ndarray`, :class:`numpy.ndarray`, float)
         """
 
-        mu = 1.327124e11  # mu for planets orbiting the sun
-        j0 = julian(y, m, d)  # julian day at UT 0
-        ut = (hour + minute / 60 + second / 3600) / 24  # univeral time
-        jd = j0 + ut  # julian day
-        t0 = (jd - 2451545) / 36525  # calculate number of julian centuries between J2000 and date
+        jd = universal_time.julian_time()
+        t0 = universal_time.j2000_difference()
 
-        (J2000_oe, rates) = planetry_elements(planet_id)  # get data for the planet
+        (J2000_oe, rates) = self.planetry_elements()  # get data for the planet
         orbital_elements = J2000_oe + rates * t0  # calculate orbital elements at date
 
         # extract orbital elements
         a = orbital_elements[0]
         e = orbital_elements[1]
-        h = np.sqrt(mu * a * (1 - e * e))
+        h = np.sqrt(self.mu * a * (1 - e * e))
         i = orbital_elements[2]
         Omega = zero_to_360(orbital_elements[3])
         omega_hat = zero_to_360(orbital_elements[4])
@@ -118,15 +118,18 @@ class Planet:
 
         # calculate true anomaly
         M = zero_to_360((L - omega_hat))
-        E = kelper_E(e, M * np.pi / 180)
-        theta = zero_to_360(2 * np.arctan(np.sqrt((1 + e) / (1 - e)) * np.tan(E / 2)) * 180 / np.pi)
+        E = kepler_E(e, M * np.pi / 180)
+        theta = zero_to_360(
+            2 * np.arctan(np.sqrt((1 + e) / (1 - e)) * np.tan(E / 2)) * 180 / np.pi
+        )
 
         # collect the orbital elements (degrees)
         oe = (h, i, Omega, e, omega, theta, a, omega_hat, L, M, E * 180 / np.pi)
 
         # calculate the state vector (angles in radians)
         (r, v) = state_vector(
-            h, i * np.pi / 180, Omega * np.pi / 180, e, omega * np.pi / 180, theta * np.pi / 180, mu
+            h, i * np.pi / 180, Omega * np.pi / 180, e, omega * np.pi / 180, theta * np.pi / 180,
+            self.mu
         )
 
         if deg:
