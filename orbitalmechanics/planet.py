@@ -1,4 +1,5 @@
 import numpy as np
+import plotly.graph_objects as go
 from utils import kepler_E, state_vector, zero_to_360
 
 
@@ -29,7 +30,13 @@ class Planet:
         names = [
             'Mercury', 'Venus', 'Earth', 'Mars', 'Jupiter', 'Saturn', 'Uranus', 'Neptune', 'Pluto'
         ]
+        colours = [
+            '#808080', '#DEB887', '#0000FF', '#FF0000', '#FFA500', '#FFD700', '#AFEEEE', '#4682B4',
+            '#8B4513'
+        ]
+
         self.planet_name = names[planet_id]
+        self.colour = colours[planet_id]
 
     def planetry_elements(self):
         """Extract a planet's J2000 orbital elements and centennial rates.
@@ -89,8 +96,11 @@ class Planet:
         * omega: Argument of perigee
         * theta: True anomaly
         * a: Semi-major axis
+        * omega_hat: xxx
+        * L: xxx
+        * M: xxx
+        * E: xxx
 
-        :param int planet_id: ID of the planet
         :param universal_time: Universal time object
         :type universal_time: :class:`~orbitalmechanics.UniversalTime`
         :param bool deg: Whether or not to output in degrees or radians
@@ -142,3 +152,53 @@ class Planet:
                 oe[i] *= np.pi / 180
 
             return (oe, r, v, jd)
+
+    def plot_orbit(self, fig, universal_time, n=60):
+        """Plot the orbit and current state of the planet using plotly.
+
+        :param fig: Plotly graph object
+        :type: :class:`plotly.graph_objs._figure.Figure`
+        :param universal_time: Universal time object
+        :type universal_time: :class:`~orbitalmechanics.UniversalTime`
+        :param int n: Number of points used to plot the orbit
+        """
+
+        (oe, r, v, jd) = self.planet_state(universal_time)  # get planet state
+
+        # initialise orbit results
+        thetas = np.linspace(0, 2 * np.pi, n + 1)
+        x = np.zeros(n + 1)
+        y = np.zeros(n + 1)
+        z = np.zeros(n + 1)
+
+        # plot orbit
+        for (i, theta) in enumerate(thetas):
+            (r_t, v_t) = state_vector(oe[0], oe[1], oe[2], oe[3], oe[4], theta, self.mu)
+            x[i] = r_t[0]
+            y[i] = r_t[1]
+            z[i] = r_t[2]
+
+        fig.add_trace(go.Scatter3d(
+            x=x,
+            y=y,
+            z=z,
+            name=self.planet_name,
+            showlegend=False,
+            mode='lines',
+            line={
+                'color': self.colour
+            }
+        ))
+
+        # plot position
+        fig.add_trace(go.Scatter3d(
+            x=[r[0]],
+            y=[r[1]],
+            z=[r[2]],
+            name=self.planet_name,
+            mode='markers',
+            marker={
+                'color': self.colour,
+                'size': 6
+            }
+        ))
