@@ -13,7 +13,7 @@ def kepler_E(e, M):
     :rtype: float
     """
 
-    tol = 1.e-8  # set an error tolerance
+    tol = 1.0e-8  # set an error tolerance
 
     # select a starting value for E
     if M < np.pi:
@@ -56,14 +56,22 @@ def universal_anomaly(r0_norm, vr0, delta_t, mu, alpha):
         (C, S) = stumpff_functions(alpha, chi)
 
         # calculate algorithm function and its derivative
-        f = (r0_norm * vr0 / np.sqrt(mu) * chi * chi * C + (1 - alpha * r0_norm) * chi ** 3 * S
-             + r0_norm * chi - np.sqrt(mu) * delta_t)
-        dfdchi = (r0_norm * vr0 / np.sqrt(mu) * chi * (1 - alpha * chi * chi * S)
-                  + (1 - alpha * r0_norm) * chi * chi * C + r0_norm)
+        f = (
+            r0_norm * vr0 / np.sqrt(mu) * chi * chi * C
+            + (1 - alpha * r0_norm) * chi ** 3 * S
+            + r0_norm * chi
+            - np.sqrt(mu) * delta_t
+        )
+        dfdchi = (
+            r0_norm * vr0 / np.sqrt(mu) * chi * (1 - alpha * chi * chi * S)
+            + (1 - alpha * r0_norm) * chi * chi * C
+            + r0_norm
+        )
 
         error = f / dfdchi  # calculate error
         chi = chi - error  # update chi
         i += 1  # update step counter
+        print(S)
 
     if i >= max_iter:
         print("Max iterations exceeded in universal_anomaly algorithm.")
@@ -149,6 +157,8 @@ def orbital_elements(r, v, mu, deg=False):
     h = np.cross(r, v)  # calculate the specific angular momentum
     h_norm = np.sqrt(np.dot(h, h))  # calculate the magnitude of the specific angular momentum
 
+    print(h, h_norm)
+
     i = np.arccos(h[2] / h_norm)  # calculate the inclination
     # note if the 0 < i < pi/2 the orbit is prograge
     # if pi/2 < i < pi the orbit is retrograde
@@ -183,8 +193,13 @@ def orbital_elements(r, v, mu, deg=False):
 
     if deg:
         return (
-            h_norm, i * 180 / np.pi, Omega * 180 / np.pi, e_norm, omega * 180 / np.pi,
-            theta * 180 / np.pi, a
+            h_norm,
+            i * 180 / np.pi,
+            Omega * 180 / np.pi,
+            e_norm,
+            omega * 180 / np.pi,
+            theta * 180 / np.pi,
+            a,
         )
     else:
         return (h_norm, i, Omega, e_norm, omega, theta, a)
@@ -220,11 +235,8 @@ def state_vector(h, i, Omega, e, omega, theta, mu):
     j = np.sin(i) * np.cos(omega)
     k = np.cos(i)
 
-    Q_xbarX = np.array([
-        [a, b, c],
-        [d, e, f],
-        [g, j, k]]
-    )
+    Q_xbarX = np.array([[a, b, c], [d, e, f], [g, j, k]])
+    print(Q_xbarX)
 
     r_X = np.matmul(Q_xbarX, r_xbar)
     v_X = np.matmul(Q_xbarX, v_xbar)
@@ -277,11 +289,13 @@ def lambert(r1, r2, delta_t, mu):
         f = (y_z / C) ** 1.5 * S + A * np.sqrt(y_z) - np.sqrt(mu) * delta_t
 
         if z == 0:
-            dfdz = (np.sqrt(2) / 40 * y_z ** 1.5 + A / 8 * (np.sqrt(y_z)
-                    + A * np.sqrt(1 / (2 * y_z))))
+            dfdz = np.sqrt(2) / 40 * y_z ** 1.5 + A / 8 * (
+                np.sqrt(y_z) + A * np.sqrt(1 / (2 * y_z))
+            )
         else:
-            dfdz = ((y_z / C) ** 1.5 * (1 / (2 * z) * (C - 1.5 * S / C) + 0.75 * S * S / C)
-                    + A / 8 * (3 * S / C * np.sqrt(y_z) + A * np.sqrt(C / y_z)))
+            dfdz = (y_z / C) ** 1.5 * (
+                1 / (2 * z) * (C - 1.5 * S / C) + 0.75 * S * S / C
+            ) + A / 8 * (3 * S / C * np.sqrt(y_z) + A * np.sqrt(C / y_z))
 
         error = f / dfdz  # calculate error
         z = z - error  # update chi
@@ -317,8 +331,9 @@ def julian(y, m, d):
     :rtype: float
     """
 
-    return (367 * y - np.fix(7 * (y + np.fix((m + 9) / 12)) / 4) + np.fix(275 * m / 9) + d
-            + 1721013.5)
+    return (
+        367 * y - np.fix(7 * (y + np.fix((m + 9) / 12)) / 4) + np.fix(275 * m / 9) + d + 1721013.5
+    )
 
 
 def planetry_elements(planet_id):
@@ -343,29 +358,33 @@ def planetry_elements(planet_id):
     :rtype: tuple(:class:`numpy.ndarray`)
     """
 
-    J2000_elements = np.array([
-        [0.38709893, 0.20563069, 7.00487, 48.33167, 77.45645, 252.25084],
-        [0.72333199, 0.00677323, 3.39471, 76.68069, 131.53298, 181.97973],
-        [1.00000011, 0.01671022, 0.00005, -11.26064, 102.94719, 100.46435],
-        [1.52366231, 0.09341233, 1.85061, 49.57854, 336.04084, 355.45332],
-        [5.20336301, 0.04839266, 1.30530, 100.55615, 14.75385, 34.40438],
-        [9.53707032, 0.05415060, 2.48446, 113.71504, 92.43194, 49.94432],
-        [19.19126393, 0.04716771, 0.76986, 74.22988, 170.96424, 313.23218],
-        [30.06896348, 0.00858587, 1.76917, 131.72169, 44.97135, 304.88003],
-        [39.48168677, 0.24880766, 17.14175, 110.30347, 224.06676, 238.92881],
-    ])
+    J2000_elements = np.array(
+        [
+            [0.38709893, 0.20563069, 7.00487, 48.33167, 77.45645, 252.25084],
+            [0.72333199, 0.00677323, 3.39471, 76.68069, 131.53298, 181.97973],
+            [1.00000011, 0.01671022, 0.00005, -11.26064, 102.94719, 100.46435],
+            [1.52366231, 0.09341233, 1.85061, 49.57854, 336.04084, 355.45332],
+            [5.20336301, 0.04839266, 1.30530, 100.55615, 14.75385, 34.40438],
+            [9.53707032, 0.05415060, 2.48446, 113.71504, 92.43194, 49.94432],
+            [19.19126393, 0.04716771, 0.76986, 74.22988, 170.96424, 313.23218],
+            [30.06896348, 0.00858587, 1.76917, 131.72169, 44.97135, 304.88003],
+            [39.48168677, 0.24880766, 17.14175, 110.30347, 224.06676, 238.92881],
+        ]
+    )
 
-    cent_rates = np.array([
-        [0.00000066, 0.00002527, -23.51, -446.30, 573.57, 538101628.29],
-        [0.00000092, -0.00004938, -2.86, -996.89, -108.80, 210664136.06],
-        [-0.00000005, -0.00003804, -46.94, -18228.25, 1198.28, 129597740.63],
-        [-0.00007221, 0.00011902, -25.47, -1020.19, 1560.78, 68905103.78],
-        [0.00060737, -0.00012880, -4.15, 1217.17, 839.93, 10925078.35],
-        [-0.00301530, -0.00036762, 6.11, -1591.05, -1948.89, 4401052.95],
-        [0.00152025, -0.00019150, -2.09, -1681.4, 1312.56, 1542547.79],
-        [-0.00125196, 0.00002514, -3.64, -151.25, -844.43, 786449.21],
-        [-0.00076912, 0.00006465, 11.07, -37.33, -132.25, 522747.90],
-    ])
+    cent_rates = np.array(
+        [
+            [0.00000066, 0.00002527, -23.51, -446.30, 573.57, 538101628.29],
+            [0.00000092, -0.00004938, -2.86, -996.89, -108.80, 210664136.06],
+            [-0.00000005, -0.00003804, -46.94, -18228.25, 1198.28, 129597740.63],
+            [-0.00007221, 0.00011902, -25.47, -1020.19, 1560.78, 68905103.78],
+            [0.00060737, -0.00012880, -4.15, 1217.17, 839.93, 10925078.35],
+            [-0.00301530, -0.00036762, 6.11, -1591.05, -1948.89, 4401052.95],
+            [0.00152025, -0.00019150, -2.09, -1681.4, 1312.56, 1542547.79],
+            [-0.00125196, 0.00002514, -3.64, -151.25, -844.43, 786449.21],
+            [-0.00076912, 0.00006465, 11.07, -37.33, -132.25, 522747.90],
+        ]
+    )
 
     J2000_oe = J2000_elements[planet_id, :]
     rates = cent_rates[planet_id, :]
@@ -516,9 +535,51 @@ def interplanetary(depart, arrive):
     return ((rp1, vp1, jd1), (rp2, vp2, jd2), (v1, v2))
 
 
-if __name__ == '__main__':
-    # mu = 398600
-    depart = [2, 1996, 11, 7, 0, 0, 0]
-    arrive = [3, 1997, 9, 12, 0, 0, 0]
+def stumpff_functions(alpha, chi):
+    """Calculate the stumpff functions C & S as a function of z = alpha * chi * chi.
 
-    print(interplanetary(depart, arrive))
+    :param float alpha: Reciprocal of the semimajor axis
+    :param float chi: Univeral anomaly
+
+    :returns: The stumpff functions (C, S)
+    :rtype: tuple(float)
+    """
+
+    z = alpha * chi * chi  # calculate variable z
+
+    if z > 0:
+        S = (np.sqrt(z) - np.sin(np.sqrt(z))) / (np.sqrt(z)) ** 3
+        C = (1 - np.cos(np.sqrt(z))) / z
+    elif z < 0:
+        S = (np.sinh(np.sqrt(-z)) - np.sqrt(-z)) / (np.sqrt(-z)) ** 3
+        C = (np.cosh(np.sqrt(-z)) - 1) / (-z)
+    elif z == 0:
+        S = 1.0 / 6
+        C = 1.0 / 2
+
+    return (C, S)
+
+
+if __name__ == "__main__":
+    mu = 398600
+    # depart = [2, 1996, 11, 7, 0, 0, 0]
+    # arrive = [3, 1997, 9, 12, 0, 0, 0]
+
+    # print(interplanetary(depart, arrive))
+
+    # r0 = np.array([7000, -12124, 0])
+    # v0 = np.array([2.6679, 4.6210, 0])
+    # dt = 3600
+    #
+    # (r, v) = orbital_update(r0, v0, dt, mu)
+    #
+    # print(r, v)
+
+    # r = np.array([-6045, -3490, 2500])
+    # v = np.array([-3.457, 6.618, 2.533])
+    #
+    # (h_norm, i, Omega, e_norm, omega, theta, a) = orbital_elements(r, v, mu, deg=True)
+    # print(h_norm, i, Omega, e_norm, omega, theta, a)
+
+    deg = np.pi / 180
+    print(state_vector(80000, 30 * deg, 40 * deg, 1.4, 60 * deg, 30 * deg, mu))
